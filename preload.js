@@ -8,10 +8,22 @@ contextBridge.exposeInMainWorld('electronAPI', {
   installedMessage: (callback) => {
     ipcRenderer.on('installedList', (event, data) => callback(data));
   },
+
+  modifyMessage: (callback) => {
+    ipcRenderer.on('currently-modifying-app', (event, data) => callback(data));
+  },
+
+  outdatedMessage: (callback) => {
+    ipcRenderer.on('outdated-app', (event, data) => callback(data));
+  },
+
+  installedTextMessage: (callback) => {
+    ipcRenderer.on('installedDisplay', (event, data) => callback(data));
+  },
   
   removeAllListeners: () => {
     ipcRenderer.removeAllListeners('main-message');
-  }
-});
+  },
 
-ipcRenderer.on('clearLS', () => {localStorage.clear()});
+  messageToMain: (message) => ipcRenderer.send('message-to-main', message)
+});

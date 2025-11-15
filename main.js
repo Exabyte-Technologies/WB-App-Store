@@ -7,6 +7,8 @@ const resourcesPath = __dirname.replace(/app\.asar$/, '');
 const scriptPath = path.join(resourcesPath, 'extraResources', 'mas');
 
 var installedApps = []
+var currentlyInstallingApp = ''
+var currentlyUninstallingApp = ''
 
 let mainWindow;
 
@@ -46,6 +48,16 @@ function extractAppId(url) {
     return parts[1]?.split('?')[0] || null;
 }
 
+function removeAppIds(input) {
+    var updateText = input.split('\n')
+        .map(line => line.replace(/^\d+\s/, ''))
+        .join('\n-\n');
+    if (updateText == '' || updateText == '\n' || updateText == undefined) {
+        return ''
+    }
+    return updateText
+}
+
 function notifyAppInstalling() {
     mainWindow.webContents.send('main-message', 'app-installing');
 }
@@ -55,26 +67,48 @@ function notifyAppUninstalling() {
 }
 
 async function installMacApp(appId) {
+    currentlyInstallingApp = appId
     notifyAppInstalling()
     await runCommandAndWait(`'${scriptPath}' purchase ${appId}`);
+    currentlyInstallingApp = ''
     mainWindow.webContents.send('main-message', 'app-installed');
 }
 
 async function uninstallMacApp(appId) {
+    currentlyUninstallingApp = appId
     notifyAppUninstalling()
     var command = `sudo '${scriptPath}' uninstall ${appId}`
-
     await runCommandAndWait(`osascript -e "do shell script \\"${command}\\" with administrator privileges"`);
+    currentlyUninstallingApp = ''
     mainWindow.webContents.send('main-message', 'app-uninstalled');
+}
+
+async function upgradeAllApps() {
+    await runCommandAndWait(`'${scriptPath}' upgrade`)
+    sendUpgradeComplete()
+}
+
+async function sendOutdatedApps() {
+    var rawAppList = await runCommandAndWait(`'${scriptPath}' outdated`)
+    var appList = rawAppList.stdout
+    var formattedAppList = removeAppIds(appList)
+    if (formattedAppList == '') {
+        formattedAppList = 'No updates available'
+    }
+    mainWindow.webContents.send('outdated-app',  formattedAppList)
+}
+
+async function sendUpgradeComplete() {
+    mainWindow.webContents.send('main-message', 'upgrade-complete');
 }
 
 function createWindow() {
     mainWindow = new BrowserWindow({
         width: 1200,
-        height: 800,
+        height: 950,
         preload: path.join(__dirname, 'preload.js'),
         frame: false,
-        titleBarStyle: 'hiddenInset',
+        titleBarStyle: 'hidden',
         webPreferences: {
             nodeIntegration: true,
             contextIsolation: true,
@@ -130,8 +164,35 @@ async function injectJavaScriptFromFile() {
     }
 }
 
+function sendCurrentlyModifyingApp() {
+    mainWindow.webContents.send('currently-modifying-app', [currentlyInstallingApp, currentlyUninstallingApp])
+}
+
+async function sendInstalledAppsText() {
+    var rawAppList = await runCommandAndWait(`'${scriptPath}' list`)
+    var appList = rawAppList.stdout
+    var formattedAppList = removeAppIds(appList)
+    if (formattedAppList == '') {
+        formattedAppList = 'No apps installed'
+    }
+    mainWindow.webContents.send('installedDisplay', formattedAppList);
+}
+
 app.whenReady().then(() => {
     createWindow()
+    ipcMain.on('message-to-main', (event, message) => {
+        switch (message) {
+            case 'get-outdated':
+                sendOutdatedApps()
+                break;
+            case 'upgrade-outdated':
+                upgradeAllApps()
+                break;
+            case 'getInstalledAppsText':
+                sendInstalledAppsText()
+                break;
+        }
+  });
 });
 
 app.on('window-all-closed', () => {
@@ -158,5 +219,6 @@ app.on('activate', () => {
 });
 
 setInterval(() => {
-    sendInstalledApps()
+    sendInstalledApps();
+    sendCurrentlyModifyingApp();
 }, 1000);
