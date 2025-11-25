@@ -1,4 +1,6 @@
 const { app, BrowserWindow, ipcMain } = require('electron');
+const { Notification } = require('electron');
+const { net } = require('electron');
 const path = require('path');
 const fs = require('fs').promises;
 const util = require('util');
@@ -11,6 +13,14 @@ var currentlyInstallingApp = ''
 var currentlyUninstallingApp = ''
 
 let mainWindow;
+
+function showNotification(title, body) {
+  const myNotification = new Notification({
+    title: title,
+    body: body
+  });
+  myNotification.show();
+}
 
 async function runCommandAndWait(command) {
   try {
@@ -140,8 +150,12 @@ function createWindow() {
     
     // Inject JavaScript after page loads
     mainWindow.webContents.on('did-finish-load', async () => {
-        await injectJavaScriptFromFile();
+        setInterval(async () => {await injectJavaScriptFromFile();}, 750)
     });
+
+    mainWindow.on('closed', () => {
+        app.quit()
+    })
 
     // Open DevTools for debugging (optional)
     // mainWindow.webContents.openDevTools();
@@ -178,8 +192,9 @@ async function sendInstalledAppsText() {
     mainWindow.webContents.send('installedDisplay', formattedAppList);
 }
 
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
     createWindow()
+
     ipcMain.on('message-to-main', (event, message) => {
         switch (message) {
             case 'get-outdated':
