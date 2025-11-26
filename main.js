@@ -27,7 +27,6 @@ async function runCommandAndWait(command) {
     const { stdout, stderr } = await exec(command);
     return { stdout, stderr, success: true };
   } catch (error) {
-    console.error('Error executing command:', error);
     return { 
       stdout: error.stdout || '', 
       stderr: error.stderr || error.message, 
@@ -172,9 +171,7 @@ async function injectJavaScriptFromFile() {
         
         // Execute the JavaScript in the page context
         const result = await mainWindow.webContents.executeJavaScript(injectionCode);
-        console.log('✅ Injection completed successfully');
     } catch (error) {
-        console.error('❌ Injection failed:', error);
     }
 }
 
