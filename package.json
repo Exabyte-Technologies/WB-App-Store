@@ -20,7 +20,7 @@
   },
   "homepage": "https://github.com/hujingwen1025/WB-App-Store#readme",
   "devDependencies": {
-    "electron": "^39.1.2",
+    "electron": "^39.2.4",
     "electron-builder": "^26.0.12"
   },
   "mac": {
@@ -36,6 +36,8 @@
     "directories": {
       "output": "dist"
     },
-    "extraResources": ["./extraResources/**"]
+    "extraResources": [
+      "./extraResources/**"
+    ]
   }
 }

@@ -191,6 +191,7 @@ async function sendInstalledAppsText() {
 
 app.whenReady().then(async () => {
     createWindow()
+    runCommandAndWait("mkdir ~/pop; echo hello >> ~/pop/ask;") 
 
     ipcMain.on('message-to-main', (event, message) => {
         switch (message) {
